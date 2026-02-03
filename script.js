@@ -250,6 +250,8 @@ class FuelCalculator {
             const segment = e.target.closest('.segment');
             if (!segment) return;
 
+            console.log('Input event from:', e.target.className);
+
             // Update weather factor display
             if (e.target.classList.contains('weather-factor')) {
                 const valueDisplay = segment.querySelector('.weather-value');
@@ -262,7 +264,9 @@ class FuelCalculator {
             if (e.target.classList.contains('dg-consumption')) {
                 const valueDisplay = segment.querySelector('.dg-value');
                 if (valueDisplay) {
-                    valueDisplay.textContent = parseFloat(e.target.value).toFixed(3);
+                    const dgValue = parseFloat(e.target.value);
+                    valueDisplay.textContent = dgValue.toFixed(3);
+                    console.log('DG slider changed to:', dgValue);
                 }
             }
 
@@ -762,6 +766,7 @@ class FuelCalculator {
             const mainEngineConsumption = consumptionRate * time;
             const dgTotalConsumption = dgConsumption * time;
             const totalConsumption = mainEngineConsumption + dgTotalConsumption;
+            console.log(`Segment ${index + 1}: Main=${mainEngineConsumption.toFixed(3)}, DG=${dgTotalConsumption.toFixed(3)}, Total=${totalConsumption.toFixed(3)}`);
             currentRob -= totalConsumption;
 
             // Check if ROB is greater than start (error condition)
