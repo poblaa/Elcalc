@@ -39,16 +39,21 @@ class FuelCalculator {
     addRoutePoint(latlng) {
         if (this.activeSegmentIndex === null) return;
 
-        const marker = L.marker(latlng).addTo(this.map);
+        const marker = L.marker(latlng, { draggable: true }).addTo(this.map);
         const segmentIndex = this.activeSegmentIndex;
 
-        // Make marker clickable to remove it
-        marker.on('click', () => {
+        // Make marker removable on double-click
+        marker.on('dblclick', () => {
             this.removeRoutePoint(marker, segmentIndex);
         });
 
-        // Add popup to indicate clickability
-        marker.bindPopup(`Segment ${segmentIndex + 1} waypoint - Click to remove`);
+        // Update route when marker is dragged
+        marker.on('dragend', () => {
+            this.updateMarkerPosition(marker, segmentIndex);
+        });
+
+        // Add popup to indicate functionality
+        marker.bindPopup(`Segment ${segmentIndex + 1} waypoint - Drag to move, Double-click to remove`);
 
         // Ensure segment data exists
         if (!this.segmentData[segmentIndex]) {
@@ -92,6 +97,24 @@ class FuelCalculator {
             // Remove from array
             segmentData.points.splice(index, 1);
             // Update route
+            this.updateSegmentRoute(segmentIndex);
+        }
+    }
+
+    updateMarkerPosition(marker, segmentIndex) {
+        // Only allow moving if this segment is active
+        if (this.activeSegmentIndex !== segmentIndex) {
+            // Reset marker to original position if segment not active
+            return;
+        }
+
+        const segmentData = this.segmentData[segmentIndex];
+        if (!segmentData) return;
+
+        // Find the point and update its latlng
+        const point = segmentData.points.find(p => p.marker === marker);
+        if (point) {
+            point.latlng = marker.getLatLng();
             this.updateSegmentRoute(segmentIndex);
         }
     }
@@ -235,6 +258,14 @@ class FuelCalculator {
                 }
             }
 
+            // Update DG consumption display
+            if (e.target.classList.contains('dg-consumption')) {
+                const valueDisplay = segment.querySelector('.dg-value');
+                if (valueDisplay) {
+                    valueDisplay.textContent = parseFloat(e.target.value).toFixed(3);
+                }
+            }
+
             const distanceInput = segment.querySelector('.distance-nm');
             const timeInput = segment.querySelector('.time-h');
             const speedInput = segment.querySelector('.speed-kn');
@@ -298,11 +329,14 @@ class FuelCalculator {
             if (prevSegment && prevSegment.points.length > 0) {
                 const lastPoint = prevSegment.points[prevSegment.points.length - 1];
                 // Add this point to the current segment (create new marker at same location)
-                const marker = L.marker(lastPoint.latlng).addTo(this.map);
-                marker.on('click', () => {
+                const marker = L.marker(lastPoint.latlng, { draggable: true }).addTo(this.map);
+                marker.on('dblclick', () => {
                     this.removeRoutePoint(marker, index);
                 });
-                marker.bindPopup(`Segment ${index + 1} waypoint - Click to remove`);
+                marker.on('dragend', () => {
+                    this.updateMarkerPosition(marker, index);
+                });
+                marker.bindPopup(`Segment ${index + 1} waypoint - Drag to move, Double-click to remove`);
                 
                 this.segmentData[index].points.push({ latlng: lastPoint.latlng, marker });
                 this.updateSegmentRoute(index);
@@ -627,8 +661,15 @@ class FuelCalculator {
                             <span>Model</span>
                             <span>Bad</span>
                         </div>
-                        <input type="range" class="weather-factor" min="0.5" max="1.5" step="0.01" value="1.0">
+                        <input type="range" class="weather-factor" min="0.9" max="1.1" step="0.01" value="1.0">
                         <div class="weather-value">1.00</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>DG Consumption (mt/h):</label>
+                    <div class="weather-slider-container">
+                        <input type="range" class="dg-consumption" min="0.13" max="0.18" step="0.01" value="0.155">
+                        <div class="dg-value">0.155</div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -707,6 +748,7 @@ class FuelCalculator {
             const distance = parseFloat(segment.querySelector('.distance-nm').value) || 0;
             const rpm = parseFloat(segment.querySelector('.rpm').value) || 0;
             const weatherFactor = parseFloat(segment.querySelector('.weather-factor').value) || 1.0;
+            const dgConsumption = parseFloat(segment.querySelector('.dg-consumption').value) || 0.155;
             let time = parseFloat(segment.querySelector('.time-h').value) || 0;
             const speed = parseFloat(segment.querySelector('.speed-kn').value) || 0;
 
@@ -717,8 +759,10 @@ class FuelCalculator {
             }
 
             const consumptionRate = this.calculateConsumption(rpm, weatherFactor);
-            const consumption = consumptionRate * time;
-            currentRob -= consumption;
+            const mainEngineConsumption = consumptionRate * time;
+            const dgTotalConsumption = dgConsumption * time;
+            const totalConsumption = mainEngineConsumption + dgTotalConsumption;
+            currentRob -= totalConsumption;
 
             // Check if ROB is greater than start (error condition)
             if (currentRob > hfoStart) {
@@ -727,7 +771,7 @@ class FuelCalculator {
 
             results.push({
                 segment: index + 1,
-                consumption: consumption.toFixed(3),
+                consumption: totalConsumption.toFixed(3),
                 rob: Math.max(0, currentRob).toFixed(3) // Don't go below 0
             });
         });
