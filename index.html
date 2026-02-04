@@ -144,12 +144,24 @@
                 <h3>4. Main Engine Parameters</h3>
                 <p><strong>RPM:</strong> Engine revolutions per minute (45-123 RPM range)</p>
                 <p><strong>Environmental Factor (0.75-1.25):</strong></p>
+                <p>The environmental factor represents <strong>all conditions</strong> that can affect fuel consumption, not just weather. This includes:</p>
                 <ul>
-                    <li><strong>Good conditions (0.75-0.90):</strong> Calm seas, favorable weather</li>
-                    <li><strong>Model conditions (1.00):</strong> Standard operational conditions</li>
-                    <li><strong>Bad conditions (1.10-1.25):</strong> Rough seas, adverse weather</li>
+                    <li><strong>Sea conditions:</strong> Wave height, swell direction, current</li>
+                    <li><strong>Wind:</strong> Wind speed and direction relative to ship's course</li>
+                    <li><strong>Hull condition:</strong> Fresh paint after shipyard (lower), biofouling/growth (higher)</li>
+                    <li><strong>Cargo:</strong> Loading condition, cargo weight distribution</li>
+                    <li><strong>Ship's trim:</strong> Optimal vs. sub-optimal trim</li>
+                    <li><strong>Other factors:</strong> Water temperature, density, pilot areas with reduced speed</li>
                 </ul>
-                <p><strong>ME AVG:</strong> Displays the calculated main engine consumption rate corrected by environmental factor.</p>
+                <p><strong>Factor Range Guidelines:</strong></p>
+                <ul>
+                    <li><strong>0.75-0.90:</strong> Very favorable conditions (calm seas, favorable current, fresh hull after shipyard)</li>
+                    <li><strong>0.90-1.10:</strong> Most common range - quite accurate for normal operations</li>
+                    <li><strong>1.00:</strong> Standard model conditions</li>
+                    <li><strong>1.10-1.25:</strong> Adverse conditions (rough seas, strong wind, hull fouling, poor trim)</li>
+                </ul>
+                <p><strong>⚠️ Important:</strong> Values between <strong>0.9-1.1 are quite accurate</strong>. When using factors outside this range (especially above 1.1 or below 0.9), <strong>pay special attention to the historical data chart</strong> to verify your working point falls within the data cloud.</p>
+                <p><strong>ME AVG:</strong> Displays the calculated main engine consumption rate corrected by the environmental factor (shows yc = y × factor in mt/h).</p>
             </div>
 
             <div class="manual-section">
@@ -239,6 +251,6 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="script.js?v=1770235435"></script>
+    <script src="script.js?v=1738704000"></script>
 </body>
 </html>
