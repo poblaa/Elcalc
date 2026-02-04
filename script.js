@@ -258,6 +258,17 @@ class FuelCalculator {
                 }
             }
 
+            // Update ME AVG when RPM or weather factor changes
+            if (e.target.classList.contains('rpm') || e.target.classList.contains('weather-factor')) {
+                const rpm = parseFloat(segment.querySelector('.rpm').value) || 0;
+                const weatherFactor = parseFloat(segment.querySelector('.weather-factor').value) || 1.0;
+                const meAvgDisplay = segment.querySelector('.me-avg');
+                if (meAvgDisplay && rpm > 0) {
+                    const consumptionRate = this.calculateConsumption(rpm, weatherFactor);
+                    meAvgDisplay.textContent = `ME AVG: ${consumptionRate.toFixed(3)} [mt/h]`;
+                }
+            }
+
             // Update DG consumption display
             if (e.target.classList.contains('dg-consumption')) {
                 const valueDisplay = segment.querySelector('.dg-value');
@@ -664,6 +675,7 @@ class FuelCalculator {
                         <input type="range" class="weather-factor" min="0.9" max="1.1" step="0.01" value="1.0">
                         <div class="weather-value">1.00</div>
                     </div>
+                    <div class="me-avg">ME AVG: 0.000 [mt/h]</div>
                 </div>
                 <div class="form-group">
                     <label>DG Consumption (mt/h):</label>
