@@ -193,6 +193,77 @@ class FuelCalculator {
         return yc;
     }
 
+    // Maximum permissible consumption curve (black line boundary)
+    // Approximated from Max_permisible_working_area.png
+    getMaxPermissibleConsumption(rpm) {
+        // Data points approximated from the black boundary line
+        const maxCurve = [
+            {rpm: 45, yc_max: 0.095},
+            {rpm: 50, yc_max: 0.102},
+            {rpm: 55, yc_max: 0.110},
+            {rpm: 60, yc_max: 0.120},
+            {rpm: 65, yc_max: 0.132},
+            {rpm: 70, yc_max: 0.145},
+            {rpm: 75, yc_max: 0.160},
+            {rpm: 80, yc_max: 0.176},
+            {rpm: 85, yc_max: 0.194},
+            {rpm: 90, yc_max: 0.213},
+            {rpm: 95, yc_max: 0.233},
+            {rpm: 100, yc_max: 0.255},
+            {rpm: 105, yc_max: 0.278},
+            {rpm: 110, yc_max: 0.302},
+            {rpm: 115, yc_max: 0.327},
+            {rpm: 120, yc_max: 0.353},
+            {rpm: 123, yc_max: 0.370}
+        ];
+
+        // Linear interpolation between points
+        if (rpm <= maxCurve[0].rpm) return maxCurve[0].yc_max;
+        if (rpm >= maxCurve[maxCurve.length - 1].rpm) return maxCurve[maxCurve.length - 1].yc_max;
+
+        for (let i = 0; i < maxCurve.length - 1; i++) {
+            if (rpm >= maxCurve[i].rpm && rpm <= maxCurve[i + 1].rpm) {
+                const t = (rpm - maxCurve[i].rpm) / (maxCurve[i + 1].rpm - maxCurve[i].rpm);
+                return maxCurve[i].yc_max + t * (maxCurve[i + 1].yc_max - maxCurve[i].yc_max);
+            }
+        }
+        return maxCurve[maxCurve.length - 1].yc_max;
+    }
+
+    // Calculate maximum allowed weather factor for given RPM
+    getMaxWeatherFactor(rpm) {
+        if (!rpm || rpm <= 0) return 1.1; // Default max
+
+        const x = rpm;
+        const y = 0.000124176621498486 * (x * x) - 0.00391529744030522 * x + 0.104802913006673;
+        const yc_max = this.getMaxPermissibleConsumption(rpm);
+        
+        const maxWeatherFactor = yc_max / y;
+        
+        // Ensure it's at least 1.0 and round to 2 decimals
+        return Math.max(1.0, Math.round(maxWeatherFactor * 100) / 100);
+    }
+
+    updateWeatherFactorRange(segment, rpm) {
+        const weatherSlider = segment.querySelector('.weather-factor');
+        if (!weatherSlider) return;
+
+        const maxWeatherFactor = this.getMaxWeatherFactor(rpm);
+        const currentValue = parseFloat(weatherSlider.value);
+
+        // Update slider max attribute
+        weatherSlider.setAttribute('max', maxWeatherFactor.toFixed(2));
+
+        // If current value exceeds new max, adjust it
+        if (currentValue > maxWeatherFactor) {
+            weatherSlider.value = maxWeatherFactor.toFixed(2);
+            const valueDisplay = segment.querySelector('.weather-value');
+            if (valueDisplay) {
+                valueDisplay.textContent = maxWeatherFactor.toFixed(2);
+            }
+        }
+    }
+
     calculateTime(distance, speed) {
         if (!speed || speed <= 0) return 0;
         return distance / speed; // time = distance / speed
@@ -264,6 +335,7 @@ class FuelCalculator {
                 const rpm = parseFloat(segment.querySelector('.rpm').value) || 0;
                 const weatherFactor = parseFloat(segment.querySelector('.weather-factor').value) || 1.0;
                 const meAvgDisplay = segment.querySelector('.me-avg');
+                
                 if (meAvgDisplay && rpm > 0) {
                     const consumptionRate = this.calculateConsumption(rpm, weatherFactor);
                     meAvgDisplay.textContent = `ME AVG: ${consumptionRate.toFixed(3)} [mt/h]`;
@@ -275,6 +347,14 @@ class FuelCalculator {
                 const valueDisplay = segment.querySelector('.dg-value');
                 if (valueDisplay) {
                     valueDisplay.textContent = parseFloat(e.target.value).toFixed(3);
+                }
+            }
+
+            // Update Boiler running display
+            if (e.target.classList.contains('boiler-running')) {
+                const valueDisplay = segment.querySelector('.boiler-value');
+                if (valueDisplay) {
+                    valueDisplay.textContent = parseInt(e.target.value);
                 }
             }
 
@@ -312,10 +392,14 @@ class FuelCalculator {
             this.updateChartsIfVisible();
         });
 
-        // Auto-calculate when HFO Start changes
+        // Auto-calculate when HFO Start or DO Start changes
         document.getElementById('hfo-start').addEventListener('input', () => {
             this.calculateFuelConsumption();
             this.updateMEAvgDisplays();
+        });
+        
+        document.getElementById('do-start').addEventListener('input', () => {
+            this.calculateFuelConsumption();
         });
 
         // Data Chart button
@@ -327,6 +411,28 @@ class FuelCalculator {
         document.getElementById('back-to-map-btn').addEventListener('click', () => {
             this.showMap();
         });
+
+        // Manual button and modal
+        document.getElementById('manual-btn').addEventListener('click', () => {
+            document.getElementById('help-modal').style.display = 'block';
+        });
+
+        document.querySelector('.close-modal').addEventListener('click', () => {
+            document.getElementById('help-modal').style.display = 'none';
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('help-modal');
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // Show manual on startup
+        setTimeout(() => {
+            document.getElementById('help-modal').style.display = 'block';
+        }, 500);
     }
 
     setActiveSegment(index) {
@@ -677,7 +783,7 @@ class FuelCalculator {
                             <span>Model</span>
                             <span>Bad</span>
                         </div>
-                        <input type="range" class="weather-factor" min="0.9" max="1.1" step="0.01" value="1.0">
+                        <input type="range" class="weather-factor" min="0.75" max="1.25" step="0.01" value="1.0">
                         <div class="weather-value">1.00</div>
                     </div>
                     <div class="me-avg">ME AVG: 0.000 [mt/h]</div>
@@ -687,6 +793,13 @@ class FuelCalculator {
                     <div class="weather-slider-container">
                         <input type="range" class="dg-consumption" min="0.13" max="0.18" step="0.01" value="0.155">
                         <div class="dg-value">0.155</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Boiler running (%):</label>
+                    <div class="weather-slider-container">
+                        <input type="range" class="boiler-running" min="0" max="100" step="1" value="0">
+                        <div class="boiler-value">0%</div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -742,7 +855,7 @@ class FuelCalculator {
             if (h3) {
                 const icon = h3.querySelector('.toggle-icon');
                 const iconText = icon ? icon.textContent : '';
-                h3.innerHTML = `Segment ${index + 1} <span class="toggle-icon">${iconText || '▼'}</span>`;
+                h3.innerHTML = `Section ${index + 1} <span class="toggle-icon">${iconText || '▼'}</span>`;
             }
             segment.dataset.index = index;
         });
@@ -773,9 +886,11 @@ class FuelCalculator {
 
     calculateFuelConsumption() {
         const hfoStart = parseFloat(document.getElementById('hfo-start').value) || 0;
+        const doStart = parseFloat(document.getElementById('do-start').value) || 0;
         const segments = document.querySelectorAll('.segment');
         const results = [];
         let currentRob = hfoStart;
+        let currentDoRob = doStart;
         let hasWarning = false;
 
         segments.forEach((segment, index) => {
@@ -783,6 +898,7 @@ class FuelCalculator {
             const rpm = parseFloat(segment.querySelector('.rpm').value) || 0;
             const weatherFactor = parseFloat(segment.querySelector('.weather-factor').value) || 1.0;
             const dgConsumption = parseFloat(segment.querySelector('.dg-consumption').value) || 0.155;
+            const boilerRunning = parseFloat(segment.querySelector('.boiler-running').value) || 0;
             let time = parseFloat(segment.querySelector('.time-h').value) || 0;
             const speed = parseFloat(segment.querySelector('.speed-kn').value) || 0;
 
@@ -796,6 +912,11 @@ class FuelCalculator {
             const mainEngineConsumption = consumptionRate * time;
             const dgTotalConsumption = dgConsumption * time;
             const totalConsumption = mainEngineConsumption + dgTotalConsumption;
+            
+            // Calculate boiler DO consumption: (boilerRunning% / 100 * time) * 0.060 mt/h
+            const boilerDoConsumption = (boilerRunning / 100 * time) * 0.060;
+            currentDoRob -= boilerDoConsumption;
+            
             currentRob -= totalConsumption;
 
             // Check if ROB is greater than start (error condition)
@@ -806,7 +927,8 @@ class FuelCalculator {
             results.push({
                 segment: index + 1,
                 consumption: totalConsumption.toFixed(3),
-                rob: Math.max(0, currentRob).toFixed(3) // Don't go below 0
+                rob: Math.max(0, currentRob).toFixed(3),
+                doRob: Math.max(0, currentDoRob).toFixed(3)
             });
         });
 
@@ -831,6 +953,7 @@ class FuelCalculator {
                 <td>${result.segment}</td>
                 <td>${result.consumption}</td>
                 <td>${result.rob}</td>
+                <td>${result.doRob}</td>
             `;
             tbody.appendChild(row);
         });

@@ -51,7 +51,7 @@ body {
 .me-avg {
     margin-top: 8px;
     margin-bottom: 15px;
-    font-size: 13px;
+    font-size: 14px;
     color: #2c3e50;
     font-weight: 500;
 }
@@ -245,4 +245,104 @@ button:hover {
     #map {
         height: 50vh;
     }
+}
+
+/* Help Modal Styles */
+.modal {
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow: auto;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 2% auto;
+    padding: 30px;
+    border: 1px solid #888;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    color: #2c3e50;
+    border-bottom: 3px solid #3498db;
+    padding-bottom: 10px;
+    margin-bottom: 25px;
+}
+
+.manual-section {
+    margin-bottom: 25px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border-left: 4px solid #3498db;
+}
+
+.manual-section h3 {
+    color: #2c3e50;
+    margin-bottom: 12px;
+    font-size: 18px;
+}
+
+.manual-section p {
+    margin-bottom: 10px;
+    line-height: 1.6;
+    color: #555;
+}
+
+.manual-section ul {
+    margin-left: 25px;
+    margin-bottom: 10px;
+}
+
+.manual-section li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+    color: #555;
+}
+
+.manual-section strong {
+    color: #2c3e50;
+}
+
+.manual-section em {
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+.close-modal {
+    color: #aaa;
+    float: right;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+    color: #000;
+}
+
+/* App Footer */
+#app-footer {
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid #e0e0e0;
+    text-align: center;
+}
+
+#app-footer p {
+    color: #7f8c8d;
+    font-size: 12px;
+    margin: 0;
 }
