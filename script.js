@@ -829,6 +829,41 @@ class FuelCalculator {
                 segmentData.lines.forEach(line => this.map.removeLayer(line));
             }
             
+            // If there's a next segment, connect it to previous segment
+            if (index < this.segmentData.length - 1 && index > 0) {
+                const prevSegment = this.segmentData[index - 1];
+                const nextSegment = this.segmentData[index + 1];
+                
+                // If previous segment has points and next segment exists
+                if (prevSegment && prevSegment.points.length > 0 && nextSegment) {
+                    // Get last point of previous segment
+                    const lastPoint = prevSegment.points[prevSegment.points.length - 1];
+                    
+                    // If next segment has a first point, remove it
+                    if (nextSegment.points.length > 0) {
+                        const firstPointMarker = nextSegment.points[0].marker;
+                        this.map.removeLayer(firstPointMarker);
+                        nextSegment.points.shift(); // Remove first point
+                    }
+                    
+                    // Add the last point of previous segment as first point of next segment
+                    const newMarker = L.marker(lastPoint.latlng, {draggable: true}).addTo(this.map);
+                    
+                    newMarker.on('dragend', () => {
+                        this.updateMarkerPosition(newMarker, index); // Will become new index after splice
+                    });
+                    
+                    newMarker.on('dblclick', () => {
+                        this.removeRoutePoint(newMarker, index);
+                    });
+                    
+                    nextSegment.points.unshift({
+                        latlng: lastPoint.latlng,
+                        marker: newMarker
+                    });
+                }
+            }
+            
             // Remove from data array
             this.segmentData.splice(index, 1);
             
@@ -845,6 +880,15 @@ class FuelCalculator {
                 // Adjust active index if needed
                 this.activeSegmentIndex--;
             }
+            
+            // Recalculate routes for affected segments
+            if (index < this.segmentData.length) {
+                this.updateRouteForSegment(index);
+            }
+            
+            // Update fuel calculations and results
+            this.calculateFuelConsumption();
+            this.updateMEAvgDisplays();
         }
     }
 
@@ -919,24 +963,40 @@ class FuelCalculator {
             
             currentRob -= totalConsumption;
 
-            // Check if ROB is greater than start (error condition)
+            // Check for warning conditions
             if (currentRob > hfoStart) {
-                hasWarning = true;
+                hasWarning = true; // ROB exceeds start - negative consumption error
+            }
+            if (currentRob < 0) {
+                hasWarning = true; // HFO fuel exhausted
+            }
+            if (currentDoRob < 0) {
+                hasWarning = true; // DO fuel exhausted
             }
 
             results.push({
                 segment: index + 1,
                 consumption: totalConsumption.toFixed(3),
-                rob: Math.max(0, currentRob).toFixed(3),
-                doRob: Math.max(0, currentDoRob).toFixed(3)
+                rob: currentRob.toFixed(3),
+                doRob: currentDoRob.toFixed(3)
             });
         });
 
         this.displayResults(results, hasWarning);
 
-        // Show warning if ROB > HFO Start
+        // Show warnings
         if (hasWarning) {
-            alert('Warning: Check HFO Start - ROB value exceeds starting fuel.');
+            let warningMsg = '';
+            if (currentRob > hfoStart) {
+                warningMsg += '⚠️ Check HFO Start - ROB value exceeds starting fuel.\n';
+            }
+            if (currentRob < 0) {
+                warningMsg += '⚠️ HFO fuel exhausted! Increase HFO Start or reduce consumption.\n';
+            }
+            if (currentDoRob < 0) {
+                warningMsg += '⚠️ DO fuel exhausted! Increase DO Start or reduce boiler usage.\n';
+            }
+            alert(warningMsg.trim());
         }
     }
 
