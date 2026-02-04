@@ -167,6 +167,7 @@ class FuelCalculator {
 
         // Auto-calculate fuel consumption after distance update
         this.calculateFuelConsumption();
+        this.updateMEAvgDisplays();
     }
 
     calculateDistance(latlng1, latlng2) {
@@ -304,6 +305,9 @@ class FuelCalculator {
             // Auto-calculate fuel consumption after any input change
             this.calculateFuelConsumption();
             
+            // Update ME AVG displays
+            this.updateMEAvgDisplays();
+            
             // Update charts if they're visible
             this.updateChartsIfVisible();
         });
@@ -311,6 +315,7 @@ class FuelCalculator {
         // Auto-calculate when HFO Start changes
         document.getElementById('hfo-start').addEventListener('input', () => {
             this.calculateFuelConsumption();
+            this.updateMEAvgDisplays();
         });
 
         // Data Chart button
@@ -746,6 +751,23 @@ class FuelCalculator {
         const removeButtons = document.querySelectorAll('.remove-segment');
         removeButtons.forEach(button => {
             button.style.display = segments.length > 1 ? 'inline-block' : 'none';
+        });
+    }
+
+    updateMEAvgDisplays() {
+        const segments = document.querySelectorAll('.segment');
+        segments.forEach(segment => {
+            const rpm = parseFloat(segment.querySelector('.rpm').value) || 0;
+            const weatherFactor = parseFloat(segment.querySelector('.weather-factor').value) || 1.0;
+            const meAvgDisplay = segment.querySelector('.me-avg');
+            if (meAvgDisplay) {
+                if (rpm > 0) {
+                    const consumptionRate = this.calculateConsumption(rpm, weatherFactor);
+                    meAvgDisplay.textContent = `ME AVG: ${consumptionRate.toFixed(3)} [mt/h]`;
+                } else {
+                    meAvgDisplay.textContent = 'ME AVG: 0.000 [mt/h]';
+                }
+            }
         });
     }
 
